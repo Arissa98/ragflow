@@ -179,7 +179,7 @@ COPY go.mod go.sum ./
 RUN --mount=type=cache,id=ragflow_gomod,target=/root/.cache/gomod \
     --mount=type=cache,id=ragflow_gobuild,target=/root/.cache/gobuild \
     GOMODCACHE=/root/.cache/gomod GOCACHE=/root/.cache/gobuild \
-    GOPROXY=${GOPROXY:-https://goproxy.cn,https://proxy.golang.org,direct} \
+    GOPROXY=${GOPROXY:-https://proxy.golang.org,direct} \
     go mod download
 
 COPY internal internal
