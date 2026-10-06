@@ -223,10 +223,8 @@ RUN sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/ubuntu|http://archive.ubuntu.
 RUN echo "=== LLVM repository configuration ===" && \
     grep -Rni "llvm-apt" /etc/apt/sources.list.d || true
 
-RUN chmod 1777 /tmp && \
-    find /etc/apt/sources.list.d -type f -print -exec sed -i '/mirrors\.tuna\.tsinghua\.edu\.cn\/llvm-apt/s/^/#/' {} \; && \
-    apt-get update && \
-    apt-get install -y libpcre2-dev
+RUN echo "=== FINDING LLVM REPO ===" && \
+    grep -Rni "llvm-apt" /etc/apt 2>/dev/null || true
 
 RUN --mount=type=cache,id=ragflow_gomod,target=/root/.cache/gomod \
     --mount=type=cache,id=ragflow_gobuild,target=/root/.cache/gobuild \
