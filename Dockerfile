@@ -224,6 +224,7 @@ RUN echo "=== LLVM repository configuration ===" && \
     grep -Rni "llvm-apt" /etc/apt/sources.list.d || true
 
 RUN chmod 1777 /tmp && \
+    find /etc/apt/sources.list.d -type f -print -exec sed -i '/mirrors\.tuna\.tsinghua\.edu\.cn\/llvm-apt/s/^/#/' {} \; && \
     apt-get update && \
     apt-get install -y libpcre2-dev
 
