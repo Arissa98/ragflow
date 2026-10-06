@@ -219,6 +219,9 @@ RUN git config --global safe.directory "*" && \
     cd /ragflow && ./build.sh --cpp
 
 RUN sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+
+RUN grep -Rni "llvm-apt" /etc/apt/sources.list.d || true
+
 RUN chmod 1777 /tmp && \
     apt-get update && \
     apt-get install -y libpcre2-dev
