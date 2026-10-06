@@ -136,7 +136,7 @@ RUN --mount=type=cache,id=ragflow_apt,target=/var/cache/apt,sharing=locked \
 
 # ── web-builder stage ──
 
-FROM --platform=linux/amd64 infiniflow/github_action_runner:latest AS go-builder
+FROM --platform=linux/amd64 infiniflow/github_action_runner:latest AS web-builder
 USER root
 
 WORKDIR /ragflow
