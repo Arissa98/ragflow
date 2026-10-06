@@ -218,6 +218,8 @@ RUN set -eux; \
 RUN git config --global safe.directory "*" && \
     cd /ragflow && ./build.sh --cpp
 
+RUN sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+
 RUN --mount=type=cache,id=ragflow_gomod,target=/root/.cache/gomod \
     --mount=type=cache,id=ragflow_gobuild,target=/root/.cache/gobuild \
     GOMODCACHE=/root/.cache/gomod GOCACHE=/root/.cache/gobuild \
