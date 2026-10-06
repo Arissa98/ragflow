@@ -157,9 +157,10 @@ RUN --mount=type=cache,id=ragflow_npm,target=/root/.npm,sharing=locked \
 # Stamp the build version into /ragflow/VERSION. Requires git, which must be
 # preinstalled in the github_action_runner base image (the former apt-get install
 # git step was removed), and the host .git tree bound in at build time.
-RUN --mount=type=bind,source=.git,target=/ragflow/.git \
-    version_info=$(git describe --tags --match=v* --first-parent --always) && \
-    echo "$version_info" > /ragflow/VERSION
+# RUN --mount=type=bind,source=.git,target=/ragflow/.git \
+#     version_info=$(git describe --tags --match=v* --first-parent --always) && \
+#     echo "$version_info" > /ragflow/VERSION
+RUN echo "dev" > /ragflow/VERSION
 
 
 
