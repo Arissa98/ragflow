@@ -164,7 +164,7 @@ RUN --mount=type=bind,source=.git,target=/ragflow/.git \
 
 
 # ── go-builder stage ──
-FROM infiniflow/github_action_runner:latest AS go-builder
+FROM --platform=linux/amd64 infiniflow/github_action_runner:latest AS go-builder
 USER root
 SHELL ["/bin/bash", "-c"]
 WORKDIR /ragflow
