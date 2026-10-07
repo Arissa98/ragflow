@@ -144,6 +144,7 @@ networks:
 restart: unless-stopped
 
 ragflow-cpu:
+platform: linux/amd64
 image: ${RAGFLOW_IMAGE}
 depends_on:
 mysql:
