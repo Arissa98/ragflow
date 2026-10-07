@@ -52,7 +52,7 @@ services:
       - --innodb-redo-log-capacity=1G
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init.sql:/data/application/init.sql
+      - ./docker/init.sql:/data/application/init.sql
     networks:
       - ragflow
     healthcheck:
@@ -85,7 +85,7 @@ services:
     user: "0:0"
     volumes:
       - kvrocks_data:/var/lib/kvrocks
-      - ./kvrocks-entrypoint.sh:/etc/kvrocks/entrypoint.sh:ro
+      - ./docker/kvrocks-entrypoint.sh:/etc/kvrocks/entrypoint.sh:ro
     networks:
       - ragflow
     healthcheck:
@@ -113,7 +113,7 @@ services:
     image: clickhouse/clickhouse-server:26.5.5.8
     volumes:
       - clickhouse_data:/var/lib/clickhouse
-      - ./init-clickhouse.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./docker/init-clickhouse.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-ragflow}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-infini_rag_flow}
