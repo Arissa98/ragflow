@@ -1,3 +1,5 @@
+name: ragflow
+
 services:
 
 es01:
@@ -142,6 +144,7 @@ networks:
 restart: unless-stopped
 
 ragflow-cpu:
+image: ${RAGFLOW_IMAGE}
 depends_on:
 mysql:
 condition: service_healthy
@@ -152,7 +155,6 @@ required: false
 es01:
 condition: service_healthy
 required: false
-image: ${RAGFLOW_IMAGE}
 ulimits:
 nofile:
 soft: 65535
