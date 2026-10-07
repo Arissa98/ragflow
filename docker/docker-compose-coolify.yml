@@ -1,214 +1,213 @@
 name: ragflow
 
 services:
+  es01:
+    image: elasticsearch:8.11.3
+    volumes:
+      - esdata01:/usr/share/elasticsearch/data
+    tmpfs:
+      - /tmp:mode=1777,size=512m
+    environment:
+      - node.name=es01
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-infini_rag_flow}
+      - bootstrap.memory_lock=false
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - cluster.routing.allocation.disk.watermark.low=5gb
+      - cluster.routing.allocation.disk.watermark.high=3gb
+      - cluster.routing.allocation.disk.watermark.flood_stage=2gb
+    mem_limit: 2g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+    networks:
+      - ragflow
+    restart: unless-stopped
 
-es01:
-image: elasticsearch:8.11.3
+  mysql:
+    image: mysql:8.0.40
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
+    command:
+      - --max_connections=1000
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --tls_version=TLSv1.2,TLSv1.3
+      - --init-file=/data/application/init.sql
+      - --binlog_expire_logs_seconds=604800
+      - --innodb-flush-log-at-trx-commit=${MYSQL_FLUSH_LOG_AT_TRX_COMMIT:-1}
+      - --sync-binlog=${MYSQL_SYNC_BINLOG:-1}
+      - --innodb-buffer-pool-size=1G
+      - --innodb-io-capacity=2000
+      - --innodb-io-capacity-max=4000
+      - --innodb-redo-log-capacity=1G
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/data/application/init.sql
+    networks:
+      - ragflow
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-uroot", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+    restart: unless-stopped
+
+  minio:
+    image: pgsty/silo:RELEASE.2026-08-06T00-00-00Z
+    command: ["server", "--console-address", ":9001", "/data"]
+    environment:
+      - MINIO_ROOT_USER=${MINIO_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD}
+    volumes:
+      - minio_data:/data
+    networks:
+      - ragflow
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+    restart: unless-stopped
+
+  kvrocks:
+    image: apache/kvrocks:2.16.0
+    entrypoint: ["/bin/sh", "/etc/kvrocks/entrypoint.sh"]
+    user: "0:0"
+    volumes:
+      - kvrocks_data:/var/lib/kvrocks
+      - ./kvrocks-entrypoint.sh:/etc/kvrocks/entrypoint.sh:ro
+    networks:
+      - ragflow
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-infini_rag_flow}", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+    restart: unless-stopped
+
+  nats:
+    image: nats:2.14.2
+    volumes:
+      - nats_data:/data
+    command: -js -sd /data --http_port 8222
+    networks:
+      - ragflow
+    healthcheck:
+      test: ["CMD", "nats-server", "--health-check"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+    restart: unless-stopped
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.5.5.8
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./init-clickhouse.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-ragflow}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-infini_rag_flow}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    ulimits:
+      nofile:
+        soft: 655350
+        hard: 655350
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "clickhouse-client",
+          "--user",
+          "${CLICKHOUSE_USER:-ragflow}",
+          "--password",
+          "${CLICKHOUSE_PASSWORD:-infini_rag_flow}",
+          "-q",
+          "SELECT 1"
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    networks:
+      - ragflow
+    restart: unless-stopped
+
+  ragflow-cpu:
+    platform: linux/amd64
+    image: ${RAGFLOW_IMAGE}
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: false
+      nats:
+        condition: service_healthy
+        required: false
+      es01:
+        condition: service_healthy
+        required: false
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+      nproc:
+        soft: 65535
+        hard: 65535
+    command:
+      - --enable-adminserver
+      - --init-superuser
+    ports:
+      - ${SVR_WEB_HTTP_PORT:-8080}:80
+      - ${SVR_HTTP_PORT:-9380}:9380
+      - ${ADMIN_SVR_HTTP_PORT:-9381}:9381
+    volumes:
+      - ./ragflow-logs:/ragflow/logs
+      - ./service_conf.yaml.template:/ragflow/conf/service_conf.yaml.template
+      - ./entrypoint.sh:/ragflow/entrypoint.sh
+    env_file:
+      - .env
+    environment:
+      - KVROCKS_HOST=kvrocks
+      - KVROCKS_PORT=6379
+      - ES_HOST=es01
+      - ES_PORT=9200
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MINIO_HOST=minio
+      - MINIO_PORT=9000
+      - NATS_HOST=nats
+      - NATS_PORT=4222
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=9000
+    networks:
+      - ragflow
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
-- esdata01:/usr/share/elasticsearch/data
-tmpfs:
-- /tmp:mode=1777,size=512m
-environment:
-- node.name=es01
-- ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-infini_rag_flow}
-- bootstrap.memory_lock=false
-- discovery.type=single-node
-- xpack.security.enabled=true
-- xpack.security.http.ssl.enabled=false
-- xpack.security.transport.ssl.enabled=false
-- cluster.routing.allocation.disk.watermark.low=5gb
-- cluster.routing.allocation.disk.watermark.high=3gb
-- cluster.routing.allocation.disk.watermark.flood_stage=2gb
-mem_limit: 2g
-ulimits:
-memlock:
-soft: -1
-hard: -1
-healthcheck:
-test: ["CMD-SHELL", "curl -f http://localhost:9200"]
-interval: 10s
-timeout: 10s
-retries: 120
-networks:
-- ragflow
-restart: unless-stopped
-
-mysql:
-image: mysql:8.0.40
-environment:
-- MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
-command:
-- --max_connections=1000
-- --character-set-server=utf8mb4
-- --collation-server=utf8mb4_unicode_ci
-- --default-authentication-plugin=mysql_native_password
-- --tls_version=TLSv1.2,TLSv1.3
-- --init-file=/data/application/init.sql
-- --binlog_expire_logs_seconds=604800
-- --innodb-flush-log-at-trx-commit=${MYSQL_FLUSH_LOG_AT_TRX_COMMIT:-1}
-- --sync-binlog=${MYSQL_SYNC_BINLOG:-1}
-- --innodb-buffer-pool-size=1G
-- --innodb-io-capacity=2000
-- --innodb-io-capacity-max=4000
-- --innodb-redo-log-capacity=1G
-volumes:
-- mysql_data:/var/lib/mysql
-- ./init.sql:/data/application/init.sql
-networks:
-- ragflow
-healthcheck:
-test: ["CMD", "mysqladmin", "ping", "-uroot", "-p${MYSQL_PASSWORD}"]
-interval: 10s
-timeout: 10s
-retries: 120
-restart: unless-stopped
-
-minio:
-image: pgsty/silo:RELEASE.2026-08-06T00-00-00Z
-command: ["server", "--console-address", ":9001", "/data"]
-environment:
-- MINIO_ROOT_USER=${MINIO_USER}
-- MINIO_ROOT_PASSWORD=${MINIO_PASSWORD}
-volumes:
-- minio_data:/data
-networks:
-- ragflow
-healthcheck:
-test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-interval: 10s
-timeout: 10s
-retries: 120
-restart: unless-stopped
-
-kvrocks:
-image: apache/kvrocks:2.16.0
-entrypoint: ["/bin/sh", "/etc/kvrocks/entrypoint.sh"]
-user: "0:0"
-volumes:
-- kvrocks_data:/var/lib/kvrocks
-- ./kvrocks-entrypoint.sh:/etc/kvrocks/entrypoint.sh:ro
-networks:
-- ragflow
-healthcheck:
-test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-infini_rag_flow}", "ping"]
-interval: 10s
-timeout: 10s
-retries: 120
-restart: unless-stopped
-
-nats:
-image: nats:2.14.2
-volumes:
-- nats_data:/data
-command: -js -sd /data --http_port 8222
-networks:
-- ragflow
-healthcheck:
-test: ["CMD", "nats-server", "--health-check"]
-interval: 10s
-timeout: 10s
-retries: 30
-restart: unless-stopped
-
-clickhouse:
-image: clickhouse/clickhouse-server:26.5.5.8
-volumes:
-- clickhouse_data:/var/lib/clickhouse
-- ./init-clickhouse.sql:/docker-entrypoint-initdb.d/init.sql
-environment:
-- CLICKHOUSE_USER=${CLICKHOUSE_USER:-ragflow}
-- CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-infini_rag_flow}
-- CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
-ulimits:
-nofile:
-soft: 655350
-hard: 655350
-healthcheck:
-test:
-[
-"CMD",
-"clickhouse-client",
-"--user",
-"${CLICKHOUSE_USER:-ragflow}",
-"--password",
-"${CLICKHOUSE_PASSWORD:-infini_rag_flow}",
-"-q",
-"SELECT 1"
-]
-interval: 10s
-timeout: 10s
-retries: 30
-start_period: 30s
-networks:
-- ragflow
-restart: unless-stopped
-
-ragflow-cpu:
-platform: linux/amd64
-image: ${RAGFLOW_IMAGE}
-depends_on:
-mysql:
-condition: service_healthy
-required: false
-nats:
-condition: service_healthy
-required: false
-es01:
-condition: service_healthy
-required: false
-ulimits:
-nofile:
-soft: 65535
-hard: 65535
-nproc:
-soft: 65535
-hard: 65535
-command:
-- --enable-adminserver
-- --init-superuser
-ports:
-- ${SVR_WEB_HTTP_PORT:-8080}:80
-- ${SVR_HTTP_PORT:-9380}:9380
-- ${ADMIN_SVR_HTTP_PORT:-9381}:9381
-volumes:
-- ./ragflow-logs:/ragflow/logs
-- ./service_conf.yaml.template:/ragflow/conf/service_conf.yaml.template
-- ./entrypoint.sh:/ragflow/entrypoint.sh
-env_file:
-- .env
-environment:
-- KVROCKS_HOST=kvrocks
-- KVROCKS_PORT=6379
-- ES_HOST=es01
-- ES_PORT=9200
-- MYSQL_HOST=mysql
-- MYSQL_PORT=3306
-- MINIO_HOST=minio
-- MINIO_PORT=9000
-- NATS_HOST=nats
-- NATS_PORT=4222
-- CLICKHOUSE_HOST=clickhouse
-- CLICKHOUSE_PORT=9000
-networks:
-- ragflow
-restart: unless-stopped
-extra_hosts:
-- "host.docker.internal:host-gateway"
-
-volumes:
-esdata01:
-driver: local
-mysql_data:
-driver: local
-minio_data:
-driver: local
-kvrocks_data:
-driver: local
-nats_data:
-driver: local
-clickhouse_data:
-driver: local
+  esdata01:
+    driver: local
+  mysql_data:
+    driver: local
+  minio_data:
+    driver: local
+  kvrocks_data:
+    driver: local
+  nats_data:
+    driver: local
+  clickhouse_data:
+    driver: local
 
 networks:
-ragflow:
-driver: bridge
+  ragflow:
+    driver: bridge
