@@ -172,7 +172,6 @@ services:
     volumes:
       - ./ragflow-logs:/ragflow/logs
       - ./docker/service_conf.yaml.template:/ragflow/conf/service_conf.yaml.template
-      - ./docker/entrypoint.sh:/ragflow/entrypoint.sh
     env_file:
       - .env
     environment:
