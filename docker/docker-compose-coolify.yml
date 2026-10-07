@@ -1,4 +1,3 @@
-```yaml
 services:
 
   es01:
@@ -211,11 +210,6 @@ services:
     restart: unless-stopped
 
   mysql:
-    profiles:
-      - mysql
-      - metadata-mysql
-      - metadata-MySQL
-      - metadata-MYSQL
     image: mysql:8.0.40
     env_file: .env
     environment:
@@ -414,8 +408,6 @@ services:
       mysql:
         condition: service_healthy
         required: false
-    profiles:
-      - cpu
     image: ${RAGFLOW_IMAGE}
     ulimits:
       nofile:
@@ -479,4 +471,3 @@ volumes:
 networks:
   ragflow:
     driver: bridge
-```
