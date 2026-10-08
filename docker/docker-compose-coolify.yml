@@ -14,12 +14,6 @@ services:
     image: ${RAGFLOW_IMAGE}
     command:
       - --enable-adminserver
-    ports:
-      - ${SVR_WEB_HTTP_PORT:-80}:80
-      - ${SVR_WEB_HTTPS_PORT:-443}:443
-      - ${SVR_HTTP_PORT:-9380}:9380
-      - ${ADMIN_SVR_HTTP_PORT:-9381}:9381
-      - ${SVR_MCP_PORT:-9382}:9382
     volumes:
       - ./ragflow-logs:/ragflow/logs
     env_file: .env
@@ -48,12 +42,6 @@ services:
     image: ${RAGFLOW_IMAGE}
     command:
       - --enable-adminserver
-    ports:
-      - ${SVR_WEB_HTTP_PORT:-80}:80
-      - ${SVR_WEB_HTTPS_PORT:-443}:443
-      - ${SVR_HTTP_PORT:-9380}:9380
-      - ${ADMIN_SVR_HTTP_PORT:-9381}:9381
-      - ${SVR_MCP_PORT:-9382}:9382
     volumes:
       - ./ragflow-logs:/ragflow/logs
     env_file: .env
@@ -85,8 +73,6 @@ services:
       - esdata01:/usr/share/elasticsearch/data
     tmpfs:
       - /tmp:mode=1777,size=512m
-    ports:
-      - ${ES_PORT:-1200}:9200
     env_file: .env
     environment:
       - node.name=es01
@@ -119,8 +105,6 @@ services:
     image: hub.icert.top/opensearchproject/opensearch:2.19.1
     volumes:
       - osdata01:/usr/share/opensearch/data
-    ports:
-      - ${OS_PORT:-9201}:9201
     env_file: .env
     environment:
       - node.name=opensearch01
@@ -157,10 +141,6 @@ services:
       - infinity_data:/var/infinity
       - ./docker/infinity_conf.toml:/infinity_conf.toml
     command: ["-f", "/infinity_conf.toml"]
-    ports:
-      - ${INFINITY_THRIFT_PORT:-23817}:23817
-      - ${INFINITY_HTTP_PORT:-23820}:23820
-      - ${INFINITY_PSQL_PORT:-5432}:5432
     env_file: .env
     mem_limit: ${MEM_LIMIT:-2g}
     ulimits:
@@ -184,8 +164,6 @@ services:
       - ./docker/oceanbase/data:/root/ob
       - ./docker/oceanbase/conf:/root/.obd/cluster
       - ./docker/oceanbase/init.d:/root/boot/init.d
-    ports:
-      - ${OCEANBASE_PORT:-2881}:2881
     env_file: .env
     environment:
       - MODE=normal
@@ -212,8 +190,6 @@ services:
     container_name: seekdb
     volumes:
       - ./docker/seekdb:/var/lib/oceanbase
-    ports:
-      - ${SEEKDB_PORT:-2881}:2881
     env_file: .env
     environment:
       - ROOT_PASSWORD=${SEEKDB_PASSWORD:-infini_rag_flow}
@@ -238,8 +214,6 @@ services:
       - sandbox
     image: ${SANDBOX_EXECUTOR_MANAGER_IMAGE:-infiniflow/sandbox-executor-manager:latest}
     privileged: true
-    ports:
-      - ${SANDBOX_EXECUTOR_MANAGER_PORT:-9385}:9385
     env_file: .env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -274,8 +248,6 @@ services:
       - --tls_version=TLSv1.2,TLSv1.3
       - --init-file=/data/application/init.sql
       - --binlog_expire_logs_seconds=604800
-    ports:
-      - ${EXPOSE_MYSQL_PORT:-5455}:3306
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/init.sql:/data/application/init.sql
@@ -291,9 +263,6 @@ services:
   minio:
     image: pgsty/silo:RELEASE.2026-08-06T00-00-00Z
     command: ["server", "--console-address", ":9001", "/data"]
-    ports:
-      - ${MINIO_PORT:-9000}:9000
-      - ${MINIO_CONSOLE_PORT:-9001}:9001
     env_file: .env
     environment:
       - MINIO_ROOT_USER=${MINIO_USER}
@@ -322,8 +291,6 @@ services:
         "allkeys-lru",
       ]
     env_file: .env
-    ports:
-      - ${REDIS_PORT:-6379}:6379
     volumes:
       - redis_data:/data
     networks:
@@ -340,8 +307,6 @@ services:
       - tei-cpu
     image: ${TEI_IMAGE_CPU}
     hostname: tei
-    ports:
-      - ${TEI_PORT:-6380}:80
     env_file: .env
     networks:
       - ragflow
@@ -353,8 +318,6 @@ services:
       - tei-gpu
     image: ${TEI_IMAGE_GPU}
     hostname: tei
-    ports:
-      - ${TEI_PORT:-6380}:80
     env_file: .env
     networks:
       - ragflow
@@ -372,8 +335,6 @@ services:
     profiles:
       - kibana
     image: kibana:${STACK_VERSION:-8.11.3}
-    ports:
-      - ${KIBANA_PORT:-5601}:5601
     env_file: .env
     volumes:
       - kibana_data:/usr/share/kibana/data
