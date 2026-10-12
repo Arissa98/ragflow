@@ -276,6 +276,14 @@ services:
       timeout: 10s
       retries: 120
 
+  
+  nats:
+    image: nats:2.10
+    command: ["-js"]
+    networks:
+      - ragflow
+    restart: unless-stopped
+
   redis:
     image: valkey/valkey:8
     command:
@@ -292,7 +300,9 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - ragflow
+      ragflow:
+        aliases:
+          - kvrocks
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
