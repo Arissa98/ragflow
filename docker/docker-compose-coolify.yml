@@ -246,11 +246,9 @@ services:
       - --collation-server=utf8mb4_unicode_ci
       - --default-authentication-plugin=mysql_native_password
       - --tls_version=TLSv1.2,TLSv1.3
-      - ./docker/init.sql:/data/application/init.sql
       - --binlog_expire_logs_seconds=604800
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./docker/init.sql:/data/application/init.sql
     networks:
       - ragflow
     healthcheck:
