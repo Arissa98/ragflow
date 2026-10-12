@@ -32,7 +32,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "9380:9380"
+      - "80:80"
 
   ragflow-gpu:
     platform: linux/amd64
